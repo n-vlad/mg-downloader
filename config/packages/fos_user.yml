@@ -1,0 +1,15 @@
+# Friends of Symfony settings.
+fos_user:
+  db_driver: orm
+  firewall_name: main
+  user_class: App\Entity\User
+  group:
+    group_class: App\Entity\UserGroup
+    group_manager: sonata.user.orm.group_manager
+
+  from_email:
+    address: "account@mail.com"
+    sender_name: "Bot"
+
+  service:
+    user_manager: sonata.user.orm.user_manager
