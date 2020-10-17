@@ -1,0 +1,42 @@
+version: '3'
+services:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ../:/var/www/mg-downloader
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    links:
+      - php
+    ports:
+      - 8001:80
+    networks:
+      - mg
+
+  php:
+    image: mg-downloader:latest
+    depends_on:
+      - mysql
+    volumes:
+      - ../:/var/www/mg-downloader
+    environment:
+      - APP_ENV=dev
+      - PHP_IDE_CONFIG=serverName=host.docker.internal
+    links:
+      - mysql
+    networks:
+      - mg
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      - MYSQL_DATABASE=mg-downloader-db
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - 3335:3306
+    networks:
+      - mg
+
+networks:
+  mg:
