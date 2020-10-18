@@ -32,3 +32,27 @@ services:
 
     App\Service\MediaStorage:
         arguments: ['@sonata.media.manager.media']
+
+    App\Admin\Extension\GalleryAdminExtension:
+        tags:
+            - { name: sonata.admin.extension, target: sonata.media.admin.gallery }
+
+    App\Admin\VideoAdmin:
+        arguments: [~, App\Entity\Video, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_videos' }
+
+    App\Admin\GenreAdmin:
+        arguments: [~, App\Entity\Genre, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_genre' }
+
+    App\Admin\CastAdmin:
+        arguments: [~, App\Entity\Cast, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_cast' }
+
+    App\Admin\DirectorsAdmin:
+        arguments: [~, App\Entity\Directors, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_directors' }

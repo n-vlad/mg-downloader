@@ -8,6 +8,7 @@ use App\Entity\Gallery;
 use App\Entity\GalleryItem;
 use App\Entity\Genre;
 use App\Entity\Media;
+use App\Entity\Video;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
 use Sonata\MediaBundle\Extra\ApiMediaFile;
@@ -107,7 +108,7 @@ class MediaStorage
         }
 
         if (isset($data['class'])) {
-            $this->gallery->setClass($data['class']);
+            $this->gallery->setClassType($data['class']);
         }
 
         if (isset($data['cert'])) {
@@ -146,25 +147,33 @@ class MediaStorage
             $this->gallery->setLastUpdated($data['lastUpdated']);
         }
 
+        if (isset($data['viewingWindow'])) {
+            $this->gallery->setViewingWindow($data['viewingWindow']);
+        }
+
         if (isset($data['skyGoId']) && isset($data['skyGoUrl'])) {
             $this->gallery
                 ->setSkyGoId($data['skyGoId'])
                 ->setSkyGoUrl($data['skyGoUrl']);
         }
+
+        if (isset($data['videos'])) {
+            $this->processVideos($data['videos']);
+        }
     }
 
     /**
-     * @param array $cardImages
+     * @param array $images
      *
      * @throws ClientExceptionInterface
      * @throws RedirectionExceptionInterface
      * @throws ServerExceptionInterface
      * @throws TransportExceptionInterface
      */
-    protected function processImages(array $cardImages)
+    protected function processImages(array $images)
     {
-        foreach ($cardImages as $cardImage) {
-            $tmpFile = $this->generateTemporaryFile($cardImage['url']);
+        foreach ($images as $image) {
+            $tmpFile = $this->generateTemporaryFile($image['url']);
 
             if ($tmpFile === FALSE) {
                 // @Todo: Log and display issues.
@@ -176,9 +185,10 @@ class MediaStorage
             $media->setProviderName('sonata.media.provider.image');
             $media->setBinaryContent($tmpFile);
             $media->setContext('default');
-            $media->setHeight($cardImage['h']);
-            $media->setWidth($cardImage['w']);
-            $media->setName(basename($cardImage['url']));
+            $media->setHeight($image['h']);
+            $media->setWidth($image['w']);
+            $media->setName(basename($image['url']));
+            $media->setEnabled(true);
 
             $this->mediaManager->save($media);
 
@@ -211,9 +221,34 @@ class MediaStorage
 
             $processedGenre->set($key, $entry);
         }
+
         $this->entityManager->flush();
 
         $this->gallery->setGenre($processedGenre);
+    }
+
+    /**
+     * @param array $videos
+     */
+    protected function processVideos(array $videos)
+    {
+        foreach ($videos as $key => $video) {
+            $entry = new Video();
+            $entry
+                ->setName($video['title'])
+                ->setType($video['type'])
+                ->setUrl($video['url'])
+                ->setGallery($this->gallery);
+
+            if (isset($video['alternatives'])) {
+                $entry->setAlternatives($video['alternatives']);
+            }
+
+            // @Todo: Change persistence method.
+            $this->entityManager->persist($entry);
+        }
+
+        $this->entityManager->flush();
     }
 
     /**
@@ -235,6 +270,7 @@ class MediaStorage
 
             $processedCast->set($key, $entry);
         }
+
         $this->entityManager->flush();
 
         $this->gallery->setCast($processedCast);
@@ -259,6 +295,7 @@ class MediaStorage
 
             $processedDirectors->set($key, $entry);
         }
+
         $this->entityManager->flush();
 
         $this->gallery->setDirectors($processedDirectors);

@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Sonata\MediaBundle\Entity\BaseGallery;
+use Exception;
 
 /**
  * @ORM\Entity
@@ -39,7 +40,7 @@ class Gallery extends BaseGallery
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    protected string $class;
+    protected string $classType;
 
     /**
      * @ORM\Column(type="integer")
@@ -87,9 +88,9 @@ class Gallery extends BaseGallery
     protected string $url;
 
     /**
-     * @ORM\Column(type="string", nullable=true)
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected string $year;
+    protected int $year;
 
     /**
      * @ORM\Column(type="date")
@@ -97,9 +98,19 @@ class Gallery extends BaseGallery
     protected DateTime $lastUpdated;
 
     /**
+     * @ORM\Column(type="json", nullable=true)
+     */
+    protected array $viewingWindow;
+
+    /**
+     * @ORM\OneToMany(targetEntity="Video", mappedBy="gallery", cascade={"persist", "remove"}, orphanRemoval=true)
+     */
+    protected Collection $videos;
+
+    /**
      * @ORM\ManyToMany(targetEntity="App\Entity\Genre", cascade={"persist", "remove"})
      * @ORM\JoinTable(name="gallery_genre",
-     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="cascade")},
+     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
      *  inverseJoinColumns={@ORM\JoinColumn(name="genre_id", referencedColumnName="id", unique=true)}
      *)
      */
@@ -108,7 +119,7 @@ class Gallery extends BaseGallery
     /**
      * @ORM\ManyToMany(targetEntity="App\Entity\Cast", cascade={"persist", "remove"})
      * @ORM\JoinTable(name="gallery_cast",
-     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="cascade")},
+     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
      *  inverseJoinColumns={@ORM\JoinColumn(name="cast_id", referencedColumnName="id", unique=true)}
      *)
      */
@@ -117,16 +128,21 @@ class Gallery extends BaseGallery
     /**
      * @ORM\ManyToMany(targetEntity="App\Entity\Directors", cascade={"persist", "remove"})
      * @ORM\JoinTable(name="gallery_directors",
-     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="cascade")},
+     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
      *  inverseJoinColumns={@ORM\JoinColumn(name="director_id", referencedColumnName="id", unique=true)}
      *)
      */
     protected Collection $directors;
 
+    /**
+     * Gallery constructor.
+     */
     public function __construct()
     {
         $this->genre = new ArrayCollection();
         $this->cast = new ArrayCollection();
+        $this->directors = new ArrayCollection();
+        $this->videos = new ArrayCollection();
 
         parent::__construct();
     }
@@ -202,19 +218,19 @@ class Gallery extends BaseGallery
     /**
      * @return string
      */
-    public function getClass(): string
+    public function getClassType(): string
     {
-        return $this->cert;
+        return $this->classType;
     }
 
     /**
-     * @param string $class
+     * @param string $classType
      *
      * @return self
      */
-    public function setClass(string $class): self
+    public function setClassType(string $classType): self
     {
-        $this->class = $class;
+        $this->classType = $classType;
 
         return $this;
     }
@@ -400,19 +416,19 @@ class Gallery extends BaseGallery
     }
 
     /**
-     * @return string
+     * @return int
      */
-    public function getYear(): string
+    public function getYear(): int
     {
         return $this->year;
     }
 
     /**
-     * @param string $year
+     * @param int $year
      *
      * @return self
      */
-    public function setYear(string $year): self
+    public function setYear(int $year): self
     {
         $this->year = $year;
 
@@ -461,6 +477,8 @@ class Gallery extends BaseGallery
      * @param string $lastUpdated
      *
      * @return self
+     *
+     * @throws Exception
      */
     public function setLastUpdated(string $lastUpdated): self
     {
@@ -527,5 +545,33 @@ class Gallery extends BaseGallery
         $this->directors = $directors;
 
         return $this;
+    }
+
+    /**
+     * @param array $viewingWindow
+     *
+     * @return self
+     */
+    public function setViewingWindow(array $viewingWindow): self
+    {
+        $this->viewingWindow[] = $viewingWindow;
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getViewingWindow(): array
+    {
+        return $this->viewingWindow;
+    }
+
+    /**
+     * @return Collection
+     */
+    public function getVideos(): Collection
+    {
+        return $this->videos;
     }
 }
