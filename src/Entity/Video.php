@@ -42,7 +42,7 @@ class Video implements BasicVideoInterface
     protected string $url;
 
     /**
-     * @ORM\Column(type="json")
+     * @ORM\Column(type="json", nullable=true)
      */
     protected array $alternatives;
 

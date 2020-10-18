@@ -9,19 +9,24 @@ use App\Entity\GalleryItem;
 use App\Entity\Genre;
 use App\Entity\Media;
 use App\Entity\Video;
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Sonata\MediaBundle\Extra\ApiMediaFile;
 use Sonata\MediaBundle\Model\MediaManagerInterface;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Mime\MimeTypes;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Throwable;
 
-class MediaStorage
+/**
+ * MediaHandler Service
+ *
+ * Retrieves all data from a pre-specified endpoint and stores it locally via entities.
+ */
+class MediaHandler
 {
     /**
      * @var EntityManagerInterface
@@ -29,54 +34,79 @@ class MediaStorage
     private EntityManagerInterface $entityManager;
 
     /**
-     * @var Gallery
-     */
-    private Gallery $gallery;
-
-    /**
      * @var MediaManagerInterface
      */
     private MediaManagerInterface $mediaManager;
 
     /**
-     * @var HttpClientInterface
+     * @var Downloader
      */
-    private HttpClientInterface $client;
+    private Downloader $downloader;
 
-    public function __construct(MediaManagerInterface $mediaManager, HttpClientInterface $client, EntityManagerInterface $entityManager)
+    /**
+     * @var Gallery
+     */
+    private Gallery $gallery;
+
+    /**
+     * MediaHandler constructor.
+     *
+     * @param MediaManagerInterface $mediaManager
+     * @param Downloader $downloader
+     * @param EntityManagerInterface $entityManager
+     */
+    public function __construct(MediaManagerInterface $mediaManager, Downloader $downloader, EntityManagerInterface $entityManager)
     {
         $this->entityManager = $entityManager;
         $this->mediaManager = $mediaManager;
-        $this->client = $client;
+        $this->downloader = $downloader;
     }
 
     /**
-     * @param $data
+     * Fetch and process all the data that was retrieved.
      *
-     * @throws ClientExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
+     * @param OutputInterface $output
+     *   The console output.
+     *
+     * @throws Throwable
      */
-    public function processData(array $data)
+    public function processData(OutputInterface $output)
     {
+        $data = $this->downloader->fetchData();
+
         foreach ($data as $datum) {
-            $this->processGallery($datum);
+            try {
+                $this->entityManager->beginTransaction();
 
-            $this->processImages($datum['cardImages']);
+                $output->writeln(sprintf('Currently processing %s', $datum['headline']));
 
-            $this->processImages($datum['keyArtImages']);
+                $this->_buildGallery($datum);
+
+                $this->_processImages($datum['cardImages']);
+
+                $this->_processImages($datum['keyArtImages']);
+
+                $output->writeln(sprintf('Finished processing processing %s', $datum['headline']));
+
+                $this->entityManager->commit();
+            } catch (Throwable $exception) {
+                $this->entityManager->rollback();
+
+                throw $exception;
+            }
         }
     }
 
     /**
+     * Helper method to build the Gallery object and store all the retrieved information within it.
+     *
      * @param array $data
+     *   The current data segment.
+     *
+     * @throws Exception
      */
-    protected function processGallery(array $data)
+    private function _buildGallery(array $data)
     {
-        // Due to the uncertain status of the data we are forced to verify each existing key before usage.
-        // @Todo: Add remaining fields
-        // @Todo: Validate headline and body minimum requirement.
         $this->gallery = new Gallery();
         $this->gallery
             ->setContext('default')
@@ -84,19 +114,20 @@ class MediaStorage
             ->setBody($data['body'])
             ->setEnabled(true);
 
-        // @Todo: Validate complete structural integrity.
-        if (isset($data['genres'])) {
-            $this->processGenre($data['genres']);
+        if (isset($data['genres']) && is_array($data['genres'])) {
+            $this->_processGenre($data['genres']);
         }
 
-        // @Todo: Validate complete structural integrity.
-        if (isset($data['cast'])) {
-            $this->processCast($data['cast']);
+        if (isset($data['cast']) && is_array($data['cast'])) {
+            $this->_processCast($data['cast']);
         }
 
-        // @Todo: Validate complete structural integrity.
-        if (isset($data['directors'])) {
-            $this->processDirectors($data['directors']);
+        if (isset($data['directors']) && is_array($data['directors'])) {
+            $this->_processDirectors($data['directors']);
+        }
+
+        if (isset($data['videos']) && is_array($data['videos'])) {
+            $this->_processVideos($data['videos']);
         }
 
         if (isset($data['id'])) {
@@ -156,59 +187,44 @@ class MediaStorage
                 ->setSkyGoId($data['skyGoId'])
                 ->setSkyGoUrl($data['skyGoUrl']);
         }
-
-        if (isset($data['videos'])) {
-            $this->processVideos($data['videos']);
-        }
     }
 
     /**
+     * Helper method to process the given set of images into Media entries and link them to the current Gallery.
+     *
      * @param array $images
+     *   The images to process.
      *
      * @throws ClientExceptionInterface
      * @throws RedirectionExceptionInterface
      * @throws ServerExceptionInterface
      * @throws TransportExceptionInterface
+     *
+     * @see Media, Gallery
      */
-    protected function processImages(array $images)
+    private function _processImages(array $images)
     {
         foreach ($images as $image) {
-            $tmpFile = $this->generateTemporaryFile($image['url']);
+            $tmpFile = $this->_generateTemporaryFile($image['url']);
 
             if ($tmpFile === FALSE) {
                 // @Todo: Log and display issues.
                 continue;
             }
 
-            /** @var Media $media */
-            $media = $this->mediaManager->create();
-            $media->setProviderName('sonata.media.provider.image');
-            $media->setBinaryContent($tmpFile);
-            $media->setContext('default');
-            $media->setHeight($image['h']);
-            $media->setWidth($image['w']);
-            $media->setName(basename($image['url']));
-            $media->setEnabled(true);
-
-            $this->mediaManager->save($media);
-
-            $galleryItem = new GalleryItem();
-            $galleryItem->setGallery($this->gallery);
-            $galleryItem->setMedia($media);
-            $galleryItem->setEnabled(true);
-
-            $this->entityManager->persist($galleryItem);
-            $this->entityManager->flush();
+            $this->_buildMedia($tmpFile, basename($image['url']), $image['h'], $image['w']);
         }
     }
 
     /**
+     * Helper method to retrieve or create a Genre entity to link to the current gallery.
+     *
      * @param array $genres
+     *   The genres to process.
      */
-    protected function processGenre(array $genres)
+    private function _processGenre(array $genres)
     {
-        $processedGenre = new ArrayCollection();
-        foreach ($genres as $key => $genre) {
+        foreach ($genres as $genre) {
             $entry = $this->entityManager
                 ->getRepository(Genre::class)
                 ->findOneBy(['name' => $genre]);
@@ -219,20 +235,19 @@ class MediaStorage
                 $this->entityManager->persist($entry);
             }
 
-            $processedGenre->set($key, $entry);
+            $this->gallery->getGenre()->add($entry);
         }
-
-        $this->entityManager->flush();
-
-        $this->gallery->setGenre($processedGenre);
     }
 
     /**
+     * Helper method to create a Video entity to link to the current gallery.
+     *
      * @param array $videos
+     *   The videos to process.
      */
-    protected function processVideos(array $videos)
+    private function _processVideos(array $videos)
     {
-        foreach ($videos as $key => $video) {
+        foreach ($videos as $video) {
             $entry = new Video();
             $entry
                 ->setName($video['title'])
@@ -244,20 +259,19 @@ class MediaStorage
                 $entry->setAlternatives($video['alternatives']);
             }
 
-            // @Todo: Change persistence method.
-            $this->entityManager->persist($entry);
+            $this->gallery->getVideos()->add($entry);
         }
-
-        $this->entityManager->flush();
     }
 
     /**
+     * Helper method to retrieve or create a Cast entity to link to the current gallery.
+     *
      * @param array $cast
+     *   The cast to process.
      */
-    protected function processCast(array $cast)
+    private function _processCast(array $cast)
     {
-        $processedCast = new ArrayCollection();
-        foreach ($cast as $key => $castMember) {
+        foreach ($cast as $castMember) {
             $entry = $this->entityManager
                 ->getRepository(Cast::class)
                 ->findOneBy(['name' => $castMember['name']]);
@@ -268,23 +282,21 @@ class MediaStorage
                 $this->entityManager->persist($entry);
             }
 
-            $processedCast->set($key, $entry);
+            $this->gallery->getCast()->add($entry);
         }
-
-        $this->entityManager->flush();
-
-        $this->gallery->setCast($processedCast);
     }
 
     /**
+     * Helper method to retrieve or create a Director entity to link to the current gallery.
+     *
      * @param array $directors
+     *   The directors to process.
      */
-    protected function processDirectors(array $directors)
+    private function _processDirectors(array $directors)
     {
-        $processedDirectors = new ArrayCollection();
-        foreach ($directors as $key => $director) {
+        foreach ($directors as $director) {
             $entry = $this->entityManager
-                ->getRepository(Cast::class)
+                ->getRepository(Directors::class)
                 ->findOneBy(['name' => $director['name']]);
 
             if (is_null($entry)) {
@@ -293,27 +305,64 @@ class MediaStorage
                 $this->entityManager->persist($entry);
             }
 
-            $processedDirectors->set($key, $entry);
+            $this->gallery->getDirectors()->add($entry);
         }
-
-        $this->entityManager->flush();
-
-        $this->gallery->setDirectors($processedDirectors);
     }
 
     /**
+     * Helper method to build a Media entry for the given file and link it to the currently processing Gallery.
+     *
+     * @param ApiMediaFile $temporaryFile
+     *   The targeted temporary file.
+     * @param string $name
+     *   The name of the entry.
+     * @param int $height
+     *   The height of the entry.
+     * @param int $width
+     *   The width of the entry.
+     *
+     * @see Media, GalleryItem
+     */
+    private function _buildMedia(ApiMediaFile $temporaryFile, string $name, int $height, int $width)
+    {
+        /** @var Media $media */
+        $media = $this->mediaManager->create();
+        $media->setProviderName('sonata.media.provider.image');
+        $media->setBinaryContent($temporaryFile);
+        $media->setContext('default');
+        $media->setHeight($height);
+        $media->setWidth($width);
+        $media->setName($name);
+        $media->setEnabled(true);
+
+        $this->mediaManager->save($media);
+
+        $galleryItem = new GalleryItem();
+        $galleryItem->setGallery($this->gallery);
+        $galleryItem->setMedia($media);
+        $galleryItem->setEnabled(true);
+
+        // Manual persistence is required due to the doctrine being configured as part of the Sonata Core.
+        $this->entityManager->persist($galleryItem);
+    }
+
+    /**
+     * Helper method to read from the given URL and store information within a temporary file.
+     *
      * @param string $url
+     *   The targeted URL from which to retrieve data.
      *
      * @return false|ApiMediaFile
+     *   A temporary stored file or false if an error has occurred.
      *
      * @throws ClientExceptionInterface
      * @throws RedirectionExceptionInterface
      * @throws ServerExceptionInterface
      * @throws TransportExceptionInterface
      */
-    protected function generateTemporaryFile(string $url)
+    private function _generateTemporaryFile(string $url)
     {
-        $fileContents = $this->getFileContents($url);
+        $fileContents = $this->downloader->getFileContents($url);
 
         if (!empty($fileContents)) {
             $guesser = MimeTypes::getDefault();
@@ -332,32 +381,5 @@ class MediaStorage
         }
 
         return false;
-    }
-
-    /**
-     * @param string $url
-     *
-     * @return array
-     *
-     * @throws ClientExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws TransportExceptionInterface
-     */
-    protected function getFileContents(string $url)
-    {
-        $request = $this->client->request('GET', $url);
-
-        $contents = [];
-        if ($request->getStatusCode() === Response::HTTP_OK) {
-            if (isset($request->getHeaders()['content-type'])) {
-                $contents = [
-                    'content-type' => current($request->getHeaders()['content-type']),
-                    'content' => $request->getContent()
-                ];
-            }
-        }
-
-        return $contents;
     }
 }

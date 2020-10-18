@@ -10,6 +10,8 @@ use Sonata\MediaBundle\Entity\BaseGallery;
 use Exception;
 
 /**
+ * The main Gallery entity that will be the center point for all downloaded information.
+ *
  * @ORM\Entity
  * @ORM\Table(name="gallery")
  */
@@ -109,27 +111,30 @@ class Gallery extends BaseGallery
 
     /**
      * @ORM\ManyToMany(targetEntity="App\Entity\Genre", cascade={"persist", "remove"})
-     * @ORM\JoinTable(name="gallery_genre",
-     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
-     *  inverseJoinColumns={@ORM\JoinColumn(name="genre_id", referencedColumnName="id", unique=true)}
+     * @ORM\JoinTable(
+     *     name="gallery_genre",
+     *     joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
+     *     inverseJoinColumns={@ORM\JoinColumn(name="genre_id", referencedColumnName="id")}
      *)
      */
     protected Collection $genre;
 
     /**
      * @ORM\ManyToMany(targetEntity="App\Entity\Cast", cascade={"persist", "remove"})
-     * @ORM\JoinTable(name="gallery_cast",
-     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
-     *  inverseJoinColumns={@ORM\JoinColumn(name="cast_id", referencedColumnName="id", unique=true)}
+     * @ORM\JoinTable(
+     *     name="gallery_cast",
+     *     joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
+     *     inverseJoinColumns={@ORM\JoinColumn(name="cast_id", referencedColumnName="id")}
      *)
      */
     protected Collection $cast;
 
     /**
      * @ORM\ManyToMany(targetEntity="App\Entity\Directors", cascade={"persist", "remove"})
-     * @ORM\JoinTable(name="gallery_directors",
-     *  joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
-     *  inverseJoinColumns={@ORM\JoinColumn(name="director_id", referencedColumnName="id", unique=true)}
+     * @ORM\JoinTable(
+     *     name="gallery_directors",
+     *     joinColumns={@ORM\JoinColumn(name="gallery_id", referencedColumnName="id", onDelete="CASCADE")},
+     *     inverseJoinColumns={@ORM\JoinColumn(name="director_id", referencedColumnName="id")}
      *)
      */
     protected Collection $directors;
@@ -565,6 +570,14 @@ class Gallery extends BaseGallery
     public function getViewingWindow(): array
     {
         return $this->viewingWindow;
+    }
+
+    /**
+     * @return Collection
+     */
+    public function setVideos(): Collection
+    {
+        return $this->videos;
     }
 
     /**

@@ -6,6 +6,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Sonata\MediaBundle\Entity\BaseGalleryHasMedia;
 
 /**
+ * Relational table used to create a link between Gallery and Media items.
+ *
  * @ORM\Entity
  * @ORM\Table(name="gallery_item")
  */

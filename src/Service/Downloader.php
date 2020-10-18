@@ -3,6 +3,11 @@
 namespace App\Service;
 
 use Symfony\Component\HttpClient\Exception\JsonException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Downloader
@@ -14,30 +19,82 @@ class Downloader
      */
     private HttpClientInterface $client;
 
+    /**
+     * Downloader constructor.
+     *
+     * @param HttpClientInterface $client
+     */
     public function __construct(HttpClientInterface $client)
     {
-        // @Todo: Use CacheHttpClient
         $this->client = $client;
     }
 
-    public function fetchData()
+    /**
+     * Fetch the data from the endpoint and convert it to array format.
+     *
+     * @return array
+     *   The data to process in array format.
+     *
+     * @throws ClientExceptionInterface
+     * @throws JsonException
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws TransportExceptionInterface
+     */
+    public function fetchData(): array
     {
         $response = $this->client->request('GET', $this->endpoint);
 
         $content = $response->getContent();
 
-        return $this->convertData($content, $response->getHeaders());
+        return $this->_convertData($content, $response->getHeaders());
     }
 
     /**
-     * @param string $content
-     * @param array $headers
+     * Create a request and return all contents from the given URL.
+     *
+     * @param string $url
+     *   The targeted URL from which to retrieve data.
      *
      * @return array
+     *   An array containing the content and content-type, or empty otherwise the request could not be processed.
+     *
+     * @throws ClientExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws TransportExceptionInterface
+     */
+    public function getFileContents(string $url): array
+    {
+        $request = $this->client->request('GET', $url);
+
+        $contents = [];
+        if ($request->getStatusCode() === Response::HTTP_OK) {
+            if (isset($request->getHeaders()['content-type'])) {
+                $contents = [
+                    'content-type' => current($request->getHeaders()['content-type']),
+                    'content' => $request->getContent()
+                ];
+            }
+        }
+
+        return $contents;
+    }
+
+    /**
+     * Helper method to decode the given JSON-compatible data.
+     *
+     * @param string $content
+     *   The content string.
+     * @param array $headers
+     *   The response headers used to identify content-type.
+     *
+     * @return array
+     *   The decoded content.
      *
      * @throws JsonException
      */
-    protected function convertData(string $content, array $headers) : array
+    private function _convertData(string $content, array $headers): array
     {
         if (empty($content) || is_null($content)) {
             throw new JsonException('Response body is empty.');
