@@ -1,11 +1,17 @@
 FROM php:7.4-fpm
 
+# Setup scripts.
+COPY /script/* /var/scripts/
+
+# Setup interface display.
 RUN echo "export PS1=\"[\[\e[36m\]\A\[\e[m\]] \u@\h \[\e[36m\]\w\[\e[m\]: \"" >> ~/.bashrc \
  && echo "export LANG=en_US.UTF-8" >> ~/.bashrc \
  && echo "cd /var/www/mg-downloader" >> ~/.bashrc
 
+# Setup Composer to be ready to use within the container.
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
+# Install required packages.
 RUN apt-get update \
  && apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev \
  && docker-php-ext-install mysqli pdo pdo_mysql zip \
@@ -15,6 +21,7 @@ RUN apt-get update \
  && docker-php-ext-enable redis xdebug \
  && docker-php-ext-install -j$(nproc) gd
 
+# Setup XDebug
 RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini \
  && echo "[xdebug]" >> /usr/local/etc/php/php.ini \
  && echo "xdebug.var_display_max_data = 20000" >> /usr/local/etc/php/php.ini \
@@ -30,4 +37,4 @@ RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini \
 
 WORKDIR /var/www/mg-downloader
 
-CMD [ "bash", "-c", "composer install && php-fpm" ]
+CMD [ "bash", "-c", "/var/scripts/development-boot.sh && php-fpm" ]
