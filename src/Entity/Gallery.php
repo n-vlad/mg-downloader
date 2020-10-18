@@ -35,6 +35,11 @@ class Gallery extends BaseGallery
     protected string $body;
 
     /**
+     * @ORM\Column(type="string")
+     */
+    protected string $sum;
+
+    /**
      * @ORM\Column(type="string", nullable=true)
      */
     protected string $cert;
@@ -45,7 +50,7 @@ class Gallery extends BaseGallery
     protected string $classType;
 
     /**
-     * @ORM\Column(type="integer")
+     * @ORM\Column(type="integer", nullable=true)
      */
     protected int $duration;
 
@@ -75,11 +80,6 @@ class Gallery extends BaseGallery
     protected string $skyGoUrl;
 
     /**
-     * @ORM\Column(type="string")
-     */
-    protected string $sum;
-
-    /**
      * @ORM\Column(type="text", nullable=true)
      */
     protected string $synopsis;
@@ -95,7 +95,7 @@ class Gallery extends BaseGallery
     protected int $year;
 
     /**
-     * @ORM\Column(type="date")
+     * @ORM\Column(type="date", nullable=true)
      */
     protected DateTime $lastUpdated;
 
