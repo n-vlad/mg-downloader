@@ -63,6 +63,38 @@ class MediaHandler
     }
 
     /**
+     * @return Downloader
+     */
+    public function getDownloader(): Downloader
+    {
+        return $this->downloader;
+    }
+
+    /**
+     * @param Downloader $downloader
+     */
+    public function setDownloader(Downloader $downloader): void
+    {
+        $this->downloader = $downloader;
+    }
+
+    /**
+     * @return Gallery
+     */
+    public function getGallery(): Gallery
+    {
+        return $this->gallery;
+    }
+
+    /**
+     * @param Gallery $gallery
+     */
+    public function setGallery(Gallery $gallery): void
+    {
+        $this->gallery = $gallery;
+    }
+
+    /**
      * Fetch and process all the data that was retrieved.
      *
      * @param OutputInterface $output
@@ -342,7 +374,7 @@ class MediaHandler
         $galleryItem->setMedia($media);
         $galleryItem->setEnabled(true);
 
-        // Manual persistence is required due to the doctrine being configured as part of the Sonata Core.
+        // Manual persistence is required due to the doctrine structure being configured as part of the Sonata Core.
         $this->entityManager->persist($galleryItem);
     }
 

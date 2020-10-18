@@ -12,7 +12,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Downloader
 {
-    private string $endpoint = 'https://mgtechtest.blob.core.windows.net/files/showcase.json';
+    /**
+     * @var string
+     */
+    private string $endpoint;
 
     /**
      * @var HttpClientInterface
@@ -22,11 +25,29 @@ class Downloader
     /**
      * Downloader constructor.
      *
+     * @param string $endpoint
      * @param HttpClientInterface $client
      */
-    public function __construct(HttpClientInterface $client)
+    public function __construct(string $endpoint, HttpClientInterface $client)
     {
+        $this->endpoint = $endpoint;
         $this->client = $client;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEndpoint(): string
+    {
+        return $this->endpoint;
+    }
+
+    /**
+     * @param string $endpoint
+     */
+    public function setEndpoint(string $endpoint): void
+    {
+        $this->endpoint = $endpoint;
     }
 
     /**
@@ -43,7 +64,7 @@ class Downloader
      */
     public function fetchData(): array
     {
-        $response = $this->client->request('GET', $this->endpoint);
+        $response = $this->client->request('GET', $this->getEndpoint());
 
         $content = $response->getContent();
 
@@ -103,18 +124,18 @@ class Downloader
         $contentType = $headers['content-type'][0] ?? 'application/json';
 
         if (!preg_match('/\bjson\b/i', $contentType)) {
-            throw new JsonException(sprintf('Response content-type is "%s" while a JSON-compatible one was expected for "%s".', $contentType, $this->endpoint));
+            throw new JsonException(sprintf('Response content-type is "%s" while a JSON-compatible one was expected for "%s".', $contentType, $this->getEndpoint()));
         }
 
         // @Todo: Catch UTF8 error and output without breaking the system.
         try {
             $content = json_decode($content, true, 512, \JSON_INVALID_UTF8_IGNORE | \JSON_BIGINT_AS_STRING | \JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new JsonException($e->getMessage().sprintf(' for "%s".', $this->endpoint), $e->getCode());
+            throw new JsonException($e->getMessage().sprintf(' for "%s".', $this->getEndpoint()), $e->getCode());
         }
 
         if (!\is_array($content)) {
-            throw new JsonException(sprintf('JSON content was expected to decode to an array, "%s" returned for "%s".', \gettype($content), $this->endpoint));
+            throw new JsonException(sprintf('JSON content was expected to decode to an array, "%s" returned for "%s".', \gettype($content), $this->getEndpoint()));
         }
 
         return $content;
