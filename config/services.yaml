@@ -4,7 +4,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
-
+    endpoint: 'https://mgtechtest.blob.core.windows.net/files/showcase.json'
+    test_data: '%kernel.project_dir%/tests/Data/'
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -30,5 +31,32 @@ services:
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
-    App\Service\MediaStorage:
+    App\Service\Downloader:
+        arguments: ['%endpoint%']
+
+    App\Service\MediaHandler:
         arguments: ['@sonata.media.manager.media']
+
+    App\Admin\Extension\GalleryAdminExtension:
+        tags:
+            - { name: sonata.admin.extension, target: sonata.media.admin.gallery }
+
+    App\Admin\VideoAdmin:
+        arguments: [~, App\Entity\Video, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_videos' }
+
+    App\Admin\GenreAdmin:
+        arguments: [~, App\Entity\Genre, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_genre' }
+
+    App\Admin\CastAdmin:
+        arguments: [~, App\Entity\Cast, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_cast' }
+
+    App\Admin\DirectorsAdmin:
+        arguments: [~, App\Entity\Directors, ~]
+        tags:
+            - { name: sonata.admin, show_in_dashboard: false, manager_type: orm, group: 'label_group_backend', label: 'label_directors' }
