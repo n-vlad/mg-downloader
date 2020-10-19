@@ -1,0 +1,2 @@
+parameters:
+  test_data: '%kernel.project_dir%/tests/Data/'
