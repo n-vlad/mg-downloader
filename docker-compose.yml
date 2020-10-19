@@ -3,8 +3,8 @@ services:
   nginx:
     image: nginx:latest
     volumes:
-      - ../:/var/www/mg-downloader
-      - ./development/config/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./:/var/www/mg-downloader
+      - ./docker/development/config/nginx.conf:/etc/nginx/conf.d/default.conf
     links:
       - php
     ports:
@@ -17,7 +17,7 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ../:/var/www/mg-downloader
+      - ./:/var/www/mg-downloader
     environment:
       - APP_ENV=dev
       - PHP_IDE_CONFIG=serverName=host.docker.internal

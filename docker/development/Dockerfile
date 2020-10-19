@@ -21,7 +21,7 @@ RUN apt-get update \
  && docker-php-ext-enable redis xdebug \
  && docker-php-ext-install -j$(nproc) gd
 
-# Setup XDebug
+# Setup XDebug.
 RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini \
  && echo "[xdebug]" >> /usr/local/etc/php/php.ini \
  && echo "xdebug.var_display_max_data = 20000" >> /usr/local/etc/php/php.ini \

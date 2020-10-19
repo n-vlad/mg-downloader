@@ -14,6 +14,7 @@ use Exception;
 use Sonata\MediaBundle\Extra\ApiMediaFile;
 use Sonata\MediaBundle\Model\MediaManagerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Mime\MimeTypes;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
@@ -97,12 +98,12 @@ class MediaHandler
     /**
      * Fetch and process all the data that was retrieved.
      *
-     * @param OutputInterface $output
+     * @param SymfonyStyle $output
      *   The console output.
      *
      * @throws Throwable
      */
-    public function processData(OutputInterface $output)
+    public function processData(SymfonyStyle $output)
     {
         $data = $this->downloader->fetchData();
 
@@ -110,7 +111,7 @@ class MediaHandler
             try {
                 $this->entityManager->beginTransaction();
 
-                $output->writeln(sprintf('Currently processing %s', $datum['headline']));
+                $output->section(sprintf('Currently processing %s', $datum['headline']));
 
                 $this->_buildGallery($datum);
 

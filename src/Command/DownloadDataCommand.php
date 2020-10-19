@@ -9,6 +9,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
 
+/**
+ * Command used to trigger the download process.
+ */
 class DownloadDataCommand extends Command
 {
     /**
@@ -45,9 +48,8 @@ class DownloadDataCommand extends Command
     {
         $console = new SymfonyStyle($input, $output);
 
+        // @Todo: Shift to a progress bar.
         $console->title('MG Downloader');
-
-        $console->section('Starting download process.');
 
         try {
             $this->mediaStorage->processData($console);
